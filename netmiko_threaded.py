@@ -1,9 +1,10 @@
 # netmiko_threaded.py
 
+# Standard libraries
 import logging
 from sys import stdout
-from json import load
 from multiprocessing.pool import ThreadPool
+# Non-standard libraries 
 from netmiko import BaseConnection , ConnectHandler
 
 # Configuring Log format for Console 
@@ -11,49 +12,47 @@ date_strftime_format = "%d-%b-%y %H:%M:%S"
 message_format = "%(asctime)s || %(levelname)s || %(message)s"
 logging.basicConfig(format= message_format, datefmt= date_strftime_format, stream=stdout , level=logging.INFO)
 
-# List of devices to multi thread : 
+# List of devices to multi thread 
 example_devices_list = [
-							{
-								'host_name' : '#########',
-								'ip_address' : '#######',
-							}
+							{'host_name' : '#########','ip_address' : '#######'},
 						]
 
-def device_connections(switch_dictionary):
+def connect_to_device(device_dictionary):
     '''
     Descrption : use Netmiko SSH to devices - Execute the commands needed - Append to file 02_output.txt
     Output :
         No return - save to file
     '''
-    logging.info(f' {switch_dictionary["host_name"]} ( {switch_dictionary["ip_address"]} - Logging in progress )')
+    logging.info(f' {device_dictionary["host_name"]} ( {device_dictionary["ip_address"]} - Logging in progress )')
     try:
-        aterm = {
-                    'device_type': 'huawei',
-                    'host': switch_dictionary["ip_address"],
-                    'username': 'orange',
-                    'password' : 'FTcloud2016!',
-                    'verbose': False ,
+        device_dictionary = {
+                    'device_type': '###############',  
+                    'host': device_dictionary["ip_address"],
+                    'username': '##############',
+                    'password' : '############',
+                    # 'verbose': False ,        # Uncomment if you need to disable the information Logs of Netmiko to appear in stout
                     # 'session_log': 'log.txt', # Uncomment this line to debug NetmikoConnection in the log file
-                    'global_delay_factor': 2,
+                    # 'global_delay_factor': 2, # Uncomment if your devices or commands need increased delay 
                 }
-        net_connect = ConnectHandler(**aterm) # returns Netmiko BaseConnection class instance
+        net_connect = ConnectHandler(**device_dictionary) # returns Netmiko BaseConnection class instance
         net_connect.find_prompt() # Wait for prompt before proceed
-        logging.info(f' {switch_dictionary["host_name"]} - Logged in successfully ')
-        output = '######################################### Start of'+switch_dictionary["host_name"]+' ######################################### \n\r '
+        logging.info(f' {device_dictionary["host_name"]} - Logged in successfully ')
+        output = '######################## Start of '+device_dictionary["host_name"]+' Output ########################  \n\r '
         # --------------------------------------------------------------------------
-        # Put your commands here
+        # Put your commands here , you can replicate the line for multipple commands on the same device
         # --------------------------------------------------------------------------
         output += net_connect.send_command("screen-length 0 tem")
         # --------------------------------------------------------------------------
         # Writing output to file
-        with open("02_output.txt", "a") as file_object:
+        output = '######################## End of '+device_dictionary["host_name"]+' Output ########################  \n\r '
+        with open("output.txt", "a") as file_object:
             file_object.write(output)
-        logging.info(f' {switch_dictionary["host_name"]} - Output Generated ')
+        logging.info(f' {device_dictionary["host_name"]} - Output Generated ')
     except Exception as e:
-        logging.error(f' {switch_dictionary["host_name"]} ( {switch_dictionary["ip_address"]} - Not Parsed )')
-        with open("02_errors.txt", "a") as file_object:
-            file_object.write(f' {switch_dictionary["host_name"]} ( {switch_dictionary["ip_address"]} - Not Parsed )')
-            file_object.write(f' {switch_dictionary["host_name"]} Error : {e}')
+        logging.error(f' {device_dictionary["host_name"]} ( {device_dictionary["ip_address"]} - Not Parsed )')
+        with open("errors.txt", "a") as file_object:
+            file_object.write(f' {device_dictionary["host_name"]} ( {device_dictionary["ip_address"]} - Not Parsed )')
+            file_object.write(f' {device_dictionary["host_name"]} Error : {e}')
         try:
             net_connect.disconnect()
         except :
@@ -63,25 +62,9 @@ def device_connections(switch_dictionary):
 
 def main():
     # Main Program : we are using  multithreading - creating 30 Parallel threads
-    pool = ThreadPool(30)
+    pool = ThreadPool(30) # you can increase or decrease the number of threads depending on you machine and connection speed 
     # Following assigns the pool to apply action
-    results = pool.map( device_connections , switches_dictionary_list) # ( list_of_devices , action_function )
+    results = pool.map( connect_to_device , example_devices_list) 
 
 if __name__ == "__main__":
     main()
-
-
-
-# --------------------------------------------------------------------------------------------
-
-# 2)
-# ---------------------------------- NTP Check ----------------------------------------------
-#import re
-# ntp_status_ouput = net_connect.send_command("display ntp status")
-# sync_Status = re.findall(r'(?<=clock status: ).*', ntp_status_ouput)[0]
-# try:
-#     sync_Server = re.findall(r"\d+\.\d+\.\d+\.\d+",ntp_status_ouput)[0]
-# except:
-#     sync_Server = ''
-# logging.info(f' {switch_dictionary["host_name"]} ( {switch_dictionary["ip_address"]} - NTP Status : {sync_Status} - NTP Source : {sync_Server} )')
-# --------------------------------------------------------------------------------------------
